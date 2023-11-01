@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DeleteResult, ObjectId } from 'mongodb';
+import { DeleteResult } from 'mongodb';
 import { FilterQuery, Model, UpdateQuery } from 'mongoose';
 import * as slug from 'slug';
 import { BaseListParamsDto } from '../dtos/base-list-params.dto';
@@ -12,16 +12,15 @@ interface IPopulate {
 }
 
 @Injectable()
-export class BaseService<MT extends IBaseSchema = IBaseSchema>{
+export class BaseService<MT extends IBaseSchema = IBaseSchema> {
   protected baseModel: Model<MT>;
-  
+
   async getAll<T extends BaseListParamsDto>(
     baseModel: Model<MT>,
     queries: T,
     returnQuery: boolean = false,
     searchFullField: string[] = ['slugName'],
   ) {
-    
     let total = (baseModel || this.baseModel).countDocuments();
     let query = (baseModel || this.baseModel)
       .find({} as any)
@@ -30,14 +29,14 @@ export class BaseService<MT extends IBaseSchema = IBaseSchema>{
     if (queries.fields) {
       const selectedFields = queries.fields
         .split(',')
-        .map(v => v.replace(/\s+/g, ''));
+        .map((v) => v.replace(/\s+/g, ''));
       query = query.select(selectedFields);
     }
     if (queries.name) {
       const slugName = slug(queries.name, { lower: true });
       if (searchFullField.length) {
         const searchOr = [];
-        searchFullField.forEach(searchField => {
+        searchFullField.forEach((searchField) => {
           searchOr.push({ [searchField]: { $regex: slugName, $options: 'i' } });
         });
         query = query.or(searchOr);
@@ -76,8 +75,8 @@ export class BaseService<MT extends IBaseSchema = IBaseSchema>{
       const populateCaches = {};
       queries.populates
         .split(',')
-        .map(v => v.replace(/\s+/g, ''))
-        .forEach(populate => {
+        .map((v) => v.replace(/\s+/g, ''))
+        .forEach((populate) => {
           if (populate) {
             const populateParts = populate.split('.');
             if (populateParts[0] && !populateCaches[populateParts[0]]) {
@@ -126,28 +125,34 @@ export class BaseService<MT extends IBaseSchema = IBaseSchema>{
   }
 
   async detail(baseModelId: string) {
+    return await this.baseModel.findById(baseModelId).lean().exec();
+  }
+
+  async removeSingle(objectId: string): Promise<DeleteResult> {
     return await this.baseModel
-      .findById(baseModelId)
-      .lean()
+      .deleteOne({ _id: objectId } as FilterQuery<MT>)
       .exec();
   }
 
-  
-  async removeSingle(objectId: ObjectId):Promise<DeleteResult> {
-    return await this.baseModel.deleteOne({ _id: objectId } as FilterQuery<MT>).exec();
-  }
-  
-  
   async removeMultiple(ids: IdsCommonDto): Promise<DeleteResult> {
-    return this.baseModel.deleteMany({ _id: ids} as FilterQuery<MT>).exec();
+    return this.baseModel.deleteMany({ _id: ids } as FilterQuery<MT>).exec();
   }
 
-  softRemoveSingle(objectId: ObjectId): Promise<{}> {
-    return this.baseModel.updateOne({ _id: objectId} as FilterQuery<MT>, { deleted: true } as UpdateQuery<MT>).exec();
+  softRemoveSingle(objectId: string): Promise<any> {
+    return this.baseModel
+      .updateOne(
+        { _id: objectId } as FilterQuery<MT>,
+        { deleted: true } as UpdateQuery<MT>,
+      )
+      .exec();
   }
 
-
-  softRemoveMultiple(ids: IdsCommonDto): Promise<{}> {
-    return this.baseModel.updateMany({ _id: ids.ids } as FilterQuery<MT>, { deleted: true } as UpdateQuery<MT>).exec();
+  softRemoveMultiple(ids: IdsCommonDto): Promise<any> {
+    return this.baseModel
+      .updateMany(
+        { _id: ids.ids } as FilterQuery<MT>,
+        { deleted: true } as UpdateQuery<MT>,
+      )
+      .exec();
   }
 }
