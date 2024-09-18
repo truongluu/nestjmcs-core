@@ -1,22 +1,17 @@
-import {
-  Injectable,
-  NestMiddleware,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { ConfigService } from 'nestjs-config';
 import { get } from 'request-promise';
 
-@Injectable()
-export class AccountMiddleware implements NestMiddleware {
-  constructor(private readonly configService: ConfigService) {}
-
-  async use(req: Request, res: Response, next: Function) {
+export const createAccountMiddleware =
+  (configService: ConfigService) =>
+  async (req: Request, res: Response, next: Function) => {
     const path = req.path;
     if (path.indexOf('account/verify') > -1) {
       next();
     } else {
-      const authApi = this.configService.get('endpoint.auth_api');
+      const authApi = configService.get('endpoint.auth_api');
+
       if (!authApi) {
         throw new UnauthorizedException();
       }
@@ -37,5 +32,4 @@ export class AccountMiddleware implements NestMiddleware {
       }
       next();
     }
-  }
-}
+  };
