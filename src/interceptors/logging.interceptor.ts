@@ -3,18 +3,18 @@ import {
   ExecutionContext,
   HttpStatus,
   Injectable,
-  NestInterceptor
-  } from '@nestjs/common';
+  NestInterceptor,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
-import { ConfigService } from 'nestjs-config';
 import { post } from 'request-promise';
-import { Observable, throwError } from 'rxjs';
+import { throwError } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
-
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   constructor(private readonly configService: ConfigService) {}
+
   async intercept(context: ExecutionContext, next: CallHandler): Promise<any> {
     const logApi = this.configService.get('endpoint.log_api');
     const internalToken = this.configService.get('app.internal_token', '');
@@ -29,7 +29,7 @@ export class LoggingInterceptor implements NestInterceptor {
       method: request.method,
       headers: request.headers,
       requestData: request.body,
-      responseData: null
+      responseData: null,
     };
     let status;
     return next
@@ -39,9 +39,12 @@ export class LoggingInterceptor implements NestInterceptor {
           status = HttpStatus.OK;
           logData.responseData = response;
         }),
-        catchError(exception => {
-          status = HttpStatus.INTERNAL_SERVER_ERROR
-          if (exception.getStatus && typeof exception.getStatus === 'function') {
+        catchError((exception) => {
+          status = HttpStatus.INTERNAL_SERVER_ERROR;
+          if (
+            exception.getStatus &&
+            typeof exception.getStatus === 'function'
+          ) {
             status = exception.getStatus();
           }
           logData.responseData = {
@@ -49,29 +52,32 @@ export class LoggingInterceptor implements NestInterceptor {
             timestamp: new Date().toISOString(),
             path: request.url,
             method: request.method,
-            message: exception['errmsg'] || exception.message.message || exception.message.error || null
-          }
+            message:
+              exception['errmsg'] ||
+              exception.message.message ||
+              exception.message.error ||
+              null,
+          };
           return throwError(exception);
         }),
         finalize(async () => {
           if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
             const headers = {
               'Content-type': 'application/json',
-              'Authorization':  `Bearer ${internalToken}`
-            };    
+              Authorization: `Bearer ${internalToken}`,
+            };
             const options = {
-                headers,
-                body: logData,
-                json: true,
-                transform: (body, response) => response
+              headers,
+              body: logData,
+              json: true,
+              transform: (body, response) => response,
             };
             try {
-              await post(`${logApi}`, options); 
-            } catch(e) {
-            }
+              await post(`${logApi}`, options);
+            } catch (e) {}
           }
-          
-        })
-      ).toPromise();
+        }),
+      )
+      .toPromise();
   }
 }

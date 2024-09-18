@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { DeleteResult } from 'mongodb';
 import { FilterQuery, Model, UpdateQuery } from 'mongoose';
 import * as slug from 'slug';
@@ -11,7 +10,6 @@ interface IPopulate {
   select?: string[];
 }
 
-@Injectable()
 export class BaseService<MT extends IBaseSchema = IBaseSchema> {
   protected baseModel: Model<MT>;
 

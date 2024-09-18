@@ -1,15 +1,13 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { ConfigService } from 'nestjs-config';
 import { get } from 'request-promise';
 
-@Injectable()
-export class DynamicAccountMiddleware implements NestMiddleware {
-  constructor(private readonly configService: ConfigService) { }
-
-  async use(req: Request, res: Response, next: Function) {
-    const authApi = this.configService.get('endpoint.auth_api');
-    let authSchemas = this.configService.get('auth.schemas') || '';
+export const createDynamicAccountMiddleware =
+  (configService: ConfigService) =>
+  async (req: Request, res: Response, next: Function) => {
+    const authApi = configService.get('endpoint.auth_api');
+    let authSchemas = configService.get('auth.schemas') || '';
     if (!authApi || !authSchemas) {
       throw new UnauthorizedException();
     }
@@ -21,11 +19,11 @@ export class DynamicAccountMiddleware implements NestMiddleware {
 
     const headers = {
       'Content-type': 'application/json',
-      'Authorization': authroizationHeader
+      Authorization: authroizationHeader,
     };
     const options = {
       headers,
-      transform: (body, response) => response
+      transform: (body, response) => response,
     };
 
     authSchemas = typeof authSchemas === 'string' ? [authSchemas] : authSchemas;
@@ -45,5 +43,4 @@ export class DynamicAccountMiddleware implements NestMiddleware {
       throw new UnauthorizedException();
     }
     next();
-  }
-}
+  };
